@@ -47,7 +47,7 @@ public class Pasajero {
 	@Override public String toString() {
 		return
 				"Número: " + numero +
-						" Vuelo: " + codigoVuelo + " Plaza :" + getTipoPlaza() +
+						" Vuelo: " + codigoVuelo + " Plaza: " + getTipoPlaza() +
 						" Fumador: " + esFumador;
 	}
 }

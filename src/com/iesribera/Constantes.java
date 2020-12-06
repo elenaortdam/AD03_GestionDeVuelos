@@ -7,12 +7,14 @@ public final class Constantes {
 
 	public static final String TURISTA = "TU";
 	public static final String PRIMERA = "PR";
+	public static final int MAXIMO_PLAZAS_VUELO = 400;
 
 	public static final class Vuelo {
 
 		private Vuelo() {
 		}
 
+		public static final String TABLA = "VUELOS";
 		public static final String CODIGO_VUELO = "COD_VUELO";
 		public static final String HORA_SALIDA = "HORA_SALIDA";
 		public static final String DESTINO = "DESTINO";
@@ -29,6 +31,5 @@ public final class Constantes {
 		public static final String TIPO_PLAZA = "TIPO_PLAZA";
 		public static final String FUMADOR = "FUMADOR";
 	}
-
 
 }
