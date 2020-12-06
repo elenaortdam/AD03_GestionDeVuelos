@@ -1,10 +1,5 @@
 package com.iesribera;
 
-import com.sun.javafx.binding.StringFormatter;
-
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -101,7 +96,7 @@ public class Vuelo {
 		stringBuilder.append(" Destino: ").append(destino);
 		stringBuilder.append(" Procedencia: ").append(procedencia);
 		stringBuilder.append(" Plazas fumador: ").append(plazasFumador);
-		stringBuilder.append(" Plazas no fumador").append(plazasNoFumador);
+		stringBuilder.append(" Plazas no fumador: ").append(plazasNoFumador);
 		stringBuilder.append(" Plazas turista: ").append(plazasTurista);
 		stringBuilder.append(" Plazas primera: ").append(plazasPrimera);
 		for (Pasajero pasajero : pasajeros) {

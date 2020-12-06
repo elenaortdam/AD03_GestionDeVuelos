@@ -11,18 +11,43 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Main {
+import static com.iesribera.Constantes.Pasajero.FUMADOR;
+import static com.iesribera.Constantes.Vuelo.*;
+
+public class Aerolinea {
+	private static final String textoMenu =
+			"----------------------------------------------------\n" +
+					"Escoja una opción: \n" +
+					"0. Salir del programa\n" +
+					"1. Mostrar información general \n" +
+					"2. Mostrar información de los pasajeros \n" +
+					"3. Ver los pasajeros de un vuelo \n" +
+					"4. Insertar nuevo vuelo\n" +
+					"5. Borrar vuelo introducido previamente\n" +
+					"6. Convertir vuelos de fumadores a no fumadores \n" +
+					"----------------------------------------------------";
+
+	private final List<String> codigoVuelosCreados = new ArrayList<>();
 
 	public void menu() {
 
+		System.out.println(textoMenu);
+
 		BufferedReader entradaDatos = new BufferedReader(new InputStreamReader(System.in));
 		int opcionSeleccionada = 0;
+		String entradaUsuario = "";
 		do {
 
 			try {
-				String entradaUsuario = entradaDatos.readLine().trim();
-				//TODO: elena validar entradas
-				//TODO: elena controlar que el codigo de los vuelos tengan el formato adecuado
+				do {
+					entradaUsuario = entradaDatos.readLine();
+					if (entradaUsuario.isEmpty()) {
+						System.out.println("Debe introducir una opción del menú");
+					} else {
+						entradaUsuario = entradaUsuario.trim();
+					}
+				} while (entradaUsuario.isEmpty());
+
 				opcionSeleccionada = Integer.parseInt(entradaUsuario);
 				opcionesMenu(entradaDatos, opcionSeleccionada);
 			} catch (Exception e) {
@@ -34,9 +59,9 @@ public class Main {
 	private void opcionesMenu(BufferedReader entradaDatos, int opcionSeleccionada) throws IOException {
 		List<Pasajero> pasajeros;
 		String entradaUsuario;
-		List<String> vuelosCreados = new ArrayList<>();
 		switch (opcionSeleccionada) {
 			case 1:
+				System.out.println("Se está consultando los vuelos...");
 				List<Vuelo> vuelos = mostrarInformacionVuelos();
 				for (Vuelo vuelo : vuelos) {
 					String informacionVuelo =
@@ -47,12 +72,14 @@ public class Main {
 										  vuelo.getDestino().replaceAll("\n", ""));
 					System.out.println(informacionVuelo);
 				}
+				System.out.println(textoMenu);
 				break;
 			case 2:
 				pasajeros = mostrarInformacionPasajeros();
 				for (Pasajero pasajero : pasajeros) {
 					System.out.println(pasajero);
 				}
+				System.out.println(textoMenu);
 				break;
 			case 3:
 				System.out.println("¿De qué vuelo quieres ver los pasajeros?: ");
@@ -61,18 +88,72 @@ public class Main {
 				for (Pasajero pasajero : pasajeros) {
 					System.out.println(pasajero);
 				}
+				System.out.println(textoMenu);
 				break;
 			case 4:
 				Vuelo vuelo = crearVuelo(entradaDatos);
-				vuelosCreados.add(vuelo.getCodigoVuelo());
+				this.codigoVuelosCreados.add(vuelo.getCodigoVuelo());
 				insertarVuelo(vuelo);
+				System.out.printf("El vuelo %s se ha creado correctamente%n", vuelo.getCodigoVuelo());
+				System.out.printf("Datos del vuelo: %s%n", vuelo.toString());
+				System.out.println(textoMenu);
 				break;
 			case 5:
+				if (this.codigoVuelosCreados.isEmpty()) {
+					System.out.println("No existen ningún vuelo que se pueda borrar, cree uno antes");
+				} else {
+					borrarVuelo(entradaDatos, this.codigoVuelosCreados);
+				}
+				System.out.println(textoMenu);
 				break;
 			case 6:
+				System.out.println("Se convertirán todos los vuelos de fumadores a no fumadores." +
+										   "¿Está seguro de que quiere continuar? (S/N)");
+				String continuar;
+				do {
+					System.out.println("Introduce S para continuar o N para cancelar");
+					continuar = entradaDatos.readLine().trim().toUpperCase();
+				} while (continuar.isEmpty());
+				if (continuar.equals("S")) {
+					try {
+						actualizarVuelos();
+						System.out.println("Se han actualizado los vuelos correctamente");
+					} catch (SQLException throwables) {
+						System.out.println("Ha ocurrido un error al cambiar los vuelos a no fumador," +
+												   "inténtelo de nuevo más tarde");
+					}
+				}
+				System.out.println(textoMenu);
 				break;
 			default:
+				System.out.println("Ups...esa opción no es válida introduce una del 0 al 6");
+		}
+	}
 
+	private void borrarVuelo(BufferedReader entradaDatos, List<String> vuelosCreados) throws IOException {
+		String codigoIntroducido = "";
+		do {
+			System.out.println("Introduzca el codigo del vuelo que desea borrar");
+			codigoIntroducido = comprobarFormato(entradaDatos.readLine().trim().toUpperCase(),
+												 Constantes.Regex.CODIGO_VUELO);
+		} while (codigoIntroducido.isEmpty());
+
+		String borrarVuelo = "";
+		for (String codigoVuelo : vuelosCreados) {
+			if (codigoIntroducido.equals(codigoVuelo.trim())) {
+				borrarVuelo = codigoVuelo;
+			}
+		}
+		if (borrarVuelo.isEmpty()) {
+			System.out.println("No se ha creado ningún vuelo con ese código");
+		} else {
+			try {
+				borrarVuelo(borrarVuelo);
+			} catch (SQLException throwables) {
+				System.out.printf("Ha ocurrido un error al borrar el vuelo %s. Error: %s\n",
+								  borrarVuelo, throwables.getLocalizedMessage());
+			}
+			System.out.printf("El vuelo: %s se ha borrado correctamente", borrarVuelo);
 		}
 	}
 
@@ -127,7 +208,7 @@ public class Main {
 			} else {
 				int plazas = Integer.parseInt(fumador);
 				if (plazas > Constantes.MAXIMO_PLAZAS_VUELO) {
-					System.out.printf("El número de plazas no puede ser mayor al máximo del vuelo: %s",
+					System.out.printf("El número de plazas no puede ser mayor al máximo del vuelo: %s \n",
 									  Constantes.MAXIMO_PLAZAS_VUELO);
 				} else {
 					plazasFumador = plazas;
@@ -146,7 +227,7 @@ public class Main {
 			if (paisIntroducido.isEmpty()) {
 				System.out.println("Este campo no puede estar vacío");
 			} else {
-				pais = comprobarFormato(paisIntroducido, "\\w");
+				pais = comprobarFormato(paisIntroducido, "\\w{1,}");
 				if (pais.isEmpty()) {
 					System.out.println("Este campo no puede estar vacío");
 				}
@@ -197,22 +278,27 @@ public class Main {
 					System.out.println("El día debe estar entre 1 y 31. Introduzca el día de nuevo:");
 				}
 			} while (dia < 1 || dia > 31);
-			int mes;
+			int mes = 0;
 			do {
 				System.out.println("Introduzca el mes: ");
 				entradaUsuario = entradaDatos.readLine().trim();
-				mes = Integer.parseInt(entradaUsuario);
-				if (mes < 1 || mes > 12) {
-					System.out.println("El mes debe estar entre 1 y 12. Introduzca el mes de nuevo:");
+				if (entradaUsuario.isEmpty()) {
+					System.out.println("El mes no puede estar vacío, introduzca un mes válido");
+				} else {
+					mes = Integer.parseInt(entradaUsuario);
+					if (mes < 1 || mes > 12) {
+						System.out.println("El mes debe estar entre 1 y 12. Introduzca el mes de nuevo:");
+					}
 				}
+
 			} while (mes < 1 || mes > 12);
 			int anio;
 			do {
-				System.out.println("Introduzca el año: ");
+				System.out.println("Introduzca el año (formato 20XX): ");
 				entradaUsuario = entradaDatos.readLine().trim();
 				anio = Integer.parseInt(entradaUsuario);
 				if (anio < LocalDate.now().getYear()) {
-					System.out.println("El día debe estar entre 1 y 31. Introduzca la fecha de nuevo");
+					System.out.println("El año introducido no es correcto.");
 				}
 			} while (anio < LocalDate.now().getYear());
 			fechaIntroducida = LocalDate.of(anio, mes, dia);
@@ -270,7 +356,7 @@ public class Main {
 	private List<Pasajero> mostrarPasajerosVuelo(String codigoVuelo) {
 		comprobarEntrada(codigoVuelo, "Código de vuelo");
 		codigoVuelo = codigoVuelo.trim().toUpperCase();
-		String codigoVueloCorrecto = comprobarFormato(codigoVuelo, "(\\w{2}-\\w+-\\d+)");
+		String codigoVueloCorrecto = comprobarFormato(codigoVuelo, "\\w{2}-\\w+-\\d+");
 		if (codigoVueloCorrecto.isEmpty()) {
 			throw new IllegalArgumentException("El formato del código no es correcto." +
 													   " Formato correcto: XX-XX-1234");
@@ -316,6 +402,18 @@ public class Main {
 		return (int) (Math.random() * maximo);
 	}
 
+	private void borrarVuelo(String codigoVuelo) throws SQLException {
+
+		Vuelo vuelo = new Vuelo();
+
+		BaseDatos instance = BaseDatos.getInstance();
+		instance.consultaBD(String.format("delete from %s where %s = '%s'",
+										  TABLA, Constantes.Vuelo.CODIGO_VUELO,
+										  codigoVuelo));
+		instance.cerrarConsulta();
+
+	}
+
 	private List<Pasajero> extraerDatosPasajeros(ResultSet resultSet) throws SQLException {
 		List<Pasajero> pasajeros = new ArrayList<>();
 		while (resultSet.next()) {
@@ -324,7 +422,7 @@ public class Main {
 			pasajero.setCodigoVuelo(resultSet.getString(Constantes.Vuelo.CODIGO_VUELO));
 			String tipoPlaza = resultSet.getString(Constantes.Pasajero.TIPO_PLAZA);
 			pasajero.setTipoPlaza(tipoPlaza);
-			String esFumador = resultSet.getString(Constantes.Pasajero.FUMADOR);
+			String esFumador = resultSet.getString(FUMADOR);
 			pasajero.setEsFumador(esFumador.trim().equals("SI"));
 			pasajeros.add(pasajero);
 		}
@@ -337,8 +435,8 @@ public class Main {
 
 			instance.consultaBD(String.format("insert into %s values ('%s','%s'," +
 													  "'%s','%s','%s','%s','%s','%s')",
-											  Constantes.Vuelo.TABLA,
-											  vuelo.getCodigoVuelo(), vuelo.getDestino(),
+											  TABLA,
+											  vuelo.getCodigoVuelo(), vuelo.getHoraSalida(),
 											  vuelo.getDestino(), vuelo.getProcedencia(),
 											  vuelo.getPlazasFumador(), vuelo.getPlazasNoFumador(),
 											  vuelo.getPlazasTurista(), vuelo.getPlazasTurista()));
@@ -349,17 +447,26 @@ public class Main {
 		}
 	}
 
+	public void actualizarVuelos() throws SQLException {
+
+		BaseDatos instance = BaseDatos.getInstance();
+		//Sumamos las plazas de fumadores y no fumadores y ponemos a 0 las plazas para fumadores
+		ResultSet resultSet =
+				instance.consultaBD("UPDATE " + TABLA + " SET "
+											+ PLAZAS_NO_FUMADOR + " = " + PLAZAS_NO_FUMADOR + " + " + PLAZAS_FUMADOR + ", "
+											+ PLAZAS_FUMADOR + " = 0 " +
+											"WHERE " + PLAZAS_FUMADOR + " > 0");
+
+		instance.consultaBD("UPDATE " + Constantes.Pasajero.TABLA + " SET " +
+									FUMADOR + " = NO " +
+									"where " + FUMADOR + " = SI");
+		instance.cerrarConsulta();
+
+	}
+
 	public static void main(String[] args) throws IOException {
 
-		System.out.println("Escoja una opción: \n" +
-								   "0. Salir del programa\n" +
-								   "1. Mostrar información general \n" +
-								   "2. Mostrar información de los pasajeros \n" +
-								   "3. Ver los pasajeros de un vuelo \n" +
-								   "4. Insertar un nuevo vuelo\n" +
-								   "5. Borrar vuelo\n" +
-								   "6. Convertir vuelo de fumadores a no fumadores");
-		Main main = new Main();
+		Aerolinea main = new Aerolinea();
 		main.menu();
 
 	}
