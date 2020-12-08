@@ -57,9 +57,12 @@ public class Aerolinea {
 	}
 
 	private void opcionesMenu(BufferedReader entradaDatos, int opcionSeleccionada) throws IOException {
-		List<Pasajero> pasajeros;
+		List<Pasajero> pasajeros = new ArrayList<>();
 		String entradaUsuario;
 		switch (opcionSeleccionada) {
+			case 0:
+				System.out.println("Gracias por utilizar el programa. Que tenga un buen día");
+				break;
 			case 1:
 				System.out.println("Se está consultando los vuelos...");
 				List<Vuelo> vuelos = mostrarInformacionVuelos();
@@ -84,7 +87,15 @@ public class Aerolinea {
 			case 3:
 				System.out.println("¿De qué vuelo quieres ver los pasajeros?: ");
 				entradaUsuario = entradaDatos.readLine().trim();
-				pasajeros = mostrarPasajerosVuelo(entradaUsuario);
+				try {
+					pasajeros = mostrarPasajerosVuelo(entradaUsuario);
+					if (pasajeros.isEmpty()) {
+						System.out.println("No existen pasajeros para ese vuelo...");
+					}
+				} catch (IllegalArgumentException e) {
+					System.out.println(e.getLocalizedMessage());
+				}
+
 				for (Pasajero pasajero : pasajeros) {
 					System.out.println(pasajero);
 				}
@@ -149,11 +160,12 @@ public class Aerolinea {
 		} else {
 			try {
 				borrarVuelo(borrarVuelo);
+				this.codigoVuelosCreados.remove(borrarVuelo);
 			} catch (SQLException throwables) {
 				System.out.printf("Ha ocurrido un error al borrar el vuelo %s. Error: %s\n",
 								  borrarVuelo, throwables.getLocalizedMessage());
 			}
-			System.out.printf("El vuelo: %s se ha borrado correctamente", borrarVuelo);
+			System.out.printf("El vuelo: %s se ha borrado correctamente\n", borrarVuelo);
 		}
 	}
 
@@ -269,44 +281,58 @@ public class Aerolinea {
 		String entradaUsuario;
 		LocalDate fechaIntroducida;
 		do {
-			int dia;
+			int dia = 0;
 			do {
 				System.out.println("Introduzca el día: ");
 				entradaUsuario = entradaDatos.readLine().trim();
-				dia = Integer.parseInt(entradaUsuario);
-				if (dia < 1 || dia > 31) {
-					System.out.println("El día debe estar entre 1 y 31. Introduzca el día de nuevo:");
+				entradaUsuario = comprobarFormato(entradaUsuario, "\\d+");
+				if (entradaUsuario.isEmpty()) {
+					System.out.println("Debe introducir un número");
+				} else {
+					dia = Integer.parseInt(entradaUsuario);
+					if (dia < 1 || dia > 31) {
+						System.out.println("El día debe estar entre 1 y 31. Introduzca el día de nuevo:");
+					}
 				}
-			} while (dia < 1 || dia > 31);
+
+			} while (entradaUsuario.isEmpty() || (dia < 1 || dia > 31));
 			int mes = 0;
 			do {
 				System.out.println("Introduzca el mes: ");
 				entradaUsuario = entradaDatos.readLine().trim();
+				entradaUsuario = comprobarFormato(entradaUsuario, "\\d+");
 				if (entradaUsuario.isEmpty()) {
-					System.out.println("El mes no puede estar vacío, introduzca un mes válido");
+					System.out.println("Debe introducir un número");
 				} else {
+
 					mes = Integer.parseInt(entradaUsuario);
 					if (mes < 1 || mes > 12) {
 						System.out.println("El mes debe estar entre 1 y 12. Introduzca el mes de nuevo:");
 					}
 				}
 
-			} while (mes < 1 || mes > 12);
-			int anio;
+			} while (entradaUsuario.isEmpty() || mes < 1 || mes > 12);
+			int anio = 0;
 			do {
 				System.out.println("Introduzca el año (formato 20XX): ");
 				entradaUsuario = entradaDatos.readLine().trim();
-				anio = Integer.parseInt(entradaUsuario);
-				if (anio < LocalDate.now().getYear()) {
-					System.out.println("El año introducido no es correcto.");
+				entradaUsuario = comprobarFormato(entradaUsuario, "\\d+");
+				if (entradaUsuario.isEmpty()) {
+					System.out.println("Debe introducir un número");
+				} else {
+					anio = Integer.parseInt(entradaUsuario);
+					if (anio < LocalDate.now().getYear()) {
+						System.out.println("El año introducido no es correcto.");
+					}
 				}
+
 			} while (anio < LocalDate.now().getYear());
 			fechaIntroducida = LocalDate.of(anio, mes, dia);
 			if (fechaIntroducida.isBefore(LocalDate.now())) {
 				System.out.println("La fecha introducida no puede ser anterior a la actual. Introduzca los datos de nuevo.");
 			}
 
-		} while (fechaIntroducida.isBefore(LocalDate.now()));
+		} while (entradaUsuario.isEmpty() || fechaIntroducida.isBefore(LocalDate.now()));
 		return fechaIntroducida;
 	}
 
@@ -316,17 +342,23 @@ public class Aerolinea {
 		try {
 			BaseDatos instance = BaseDatos.getInstance();
 			ResultSet resultSet = instance.consultaBD("select * from vuelos v");
-			while (resultSet.next()) {
-				Vuelo vuelo = new Vuelo();
-				vuelo.setCodigoVuelo(resultSet.getString(Constantes.Vuelo.CODIGO_VUELO));
-				vuelo.setDestino(resultSet.getString(Constantes.Vuelo.DESTINO));
-				vuelo.setHoraSalida(resultSet.getString(Constantes.Vuelo.HORA_SALIDA));
-				vuelo.setProcedencia(resultSet.getString(Constantes.Vuelo.PROCEDENCIA));
-				vuelos.add(vuelo);
-			}
+			vuelos = extraerInformacionVuelos(resultSet);
 			instance.cerrarConsulta();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		}
+		return vuelos;
+	}
+
+	private List<Vuelo> extraerInformacionVuelos(ResultSet resultSet) throws SQLException {
+		List<Vuelo> vuelos = new ArrayList<>();
+		while (resultSet.next()) {
+			Vuelo vuelo = new Vuelo();
+			vuelo.setCodigoVuelo(resultSet.getString(Constantes.Vuelo.CODIGO_VUELO));
+			vuelo.setDestino(resultSet.getString(Constantes.Vuelo.DESTINO));
+			vuelo.setHoraSalida(resultSet.getString(Constantes.Vuelo.HORA_SALIDA));
+			vuelo.setProcedencia(resultSet.getString(Constantes.Vuelo.PROCEDENCIA));
+			vuelos.add(vuelo);
 		}
 		return vuelos;
 	}
@@ -353,10 +385,10 @@ public class Aerolinea {
 
 	}
 
-	private List<Pasajero> mostrarPasajerosVuelo(String codigoVuelo) {
+	private List<Pasajero> mostrarPasajerosVuelo(String codigoVuelo) throws IllegalArgumentException {
 		comprobarEntrada(codigoVuelo, "Código de vuelo");
 		codigoVuelo = codigoVuelo.trim().toUpperCase();
-		String codigoVueloCorrecto = comprobarFormato(codigoVuelo, "\\w{2}-\\w+-\\d+");
+		String codigoVueloCorrecto = comprobarFormato(codigoVuelo, "\\w+-\\w+-\\d+");
 		if (codigoVueloCorrecto.isEmpty()) {
 			throw new IllegalArgumentException("El formato del código no es correcto." +
 													   " Formato correcto: XX-XX-1234");
@@ -364,11 +396,24 @@ public class Aerolinea {
 		List<Pasajero> pasajeros = new ArrayList<>();
 		try {
 			BaseDatos instance = BaseDatos.getInstance();
-			ResultSet resultSet =
-					instance.consultaBD(String.format("select * from pasajeros p where p.%s in ('%s')",
+			List<Vuelo> vuelos;
+			ResultSet vueloConsulta =
+					instance.consultaBD(String.format("select * from %s v where v.%s in ('%s')",
+													  Constantes.Vuelo.TABLA,
 													  Constantes.Vuelo.CODIGO_VUELO, codigoVueloCorrecto));
-			pasajeros = extraerDatosPasajeros(resultSet);
-			instance.cerrarConsulta();
+			vuelos = extraerInformacionVuelos(vueloConsulta);
+			if (vuelos.isEmpty()) {
+				throw new IllegalArgumentException(String.format("No existe ningún vuelo con el código %s \n",
+																 codigoVueloCorrecto));
+
+			} else {
+				ResultSet resultSet =
+						instance.consultaBD(String.format("select * from pasajeros p where p.%s in ('%s')",
+														  Constantes.Vuelo.CODIGO_VUELO, codigoVueloCorrecto));
+				pasajeros = extraerDatosPasajeros(resultSet);
+				instance.cerrarConsulta();
+			}
+
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
