@@ -114,7 +114,7 @@ public class Aerolinea {
 					System.out.println("Introduce S para continuar o N para cancelar");
 					continuar = entradaDatos.readLine().trim().toUpperCase();
 				} while (continuar.isEmpty());
-				if (continuar.equals("S")) {
+				if (continuar.equalsIgnoreCase("S")) {
 					try {
 						actualizarVuelos();
 						System.out.println("Se han actualizado los vuelos correctamente");
@@ -386,7 +386,6 @@ public class Aerolinea {
 	}
 
 	private String crearCodigoVuelo() {
-		//todo: elena comprobar si existe
 		String letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		int[] numeros = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
 
@@ -458,8 +457,8 @@ public class Aerolinea {
 											"WHERE " + PLAZAS_FUMADOR + " > 0");
 
 		instance.consultaBD("UPDATE " + Constantes.Pasajero.TABLA + " SET " +
-									FUMADOR + " = NO " +
-									"where " + FUMADOR + " = SI");
+									FUMADOR + " = 'NO' " +
+									"where " + FUMADOR + " = 'SI'");
 		instance.cerrarConsulta();
 
 	}
